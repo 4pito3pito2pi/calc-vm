@@ -1,0 +1,28 @@
+#!/bin/sh
+# calc — evaluate expression via bytecode VM interpreter
+# Usage: calc 'expr'    or    echo 'expr' | calc
+compile_timeout=10
+compute_timeout=360
+set -e
+SELF="$0"
+[ -L "$SELF" ] && SELF="$(readlink -f "$SELF")"
+DIR="$(cd "$(dirname "$SELF")" && pwd)"
+
+if [ $# -gt 0 ]; then
+    EXPR="$*"
+else
+    read -r EXPR
+fi
+
+if [ -z "$EXPR" ]; then
+    echo "Usage: calc <expression>" >&2
+    echo "  calc '2^64'          integer" >&2
+    echo "  calc 'exp(1)'        transcendental" >&2
+    echo "  calc 'sqrt(2)*3+1'   mixed" >&2
+    exit 1
+fi
+
+[ -x "$DIR/vm" ] || { make -s -C "$DIR" vm; }
+
+timeout $compile_timeout m4 -L 10000 -DTARGET="$EXPR" "$DIR/compiler.m4" | timeout $compute_timeout "$DIR/vm"
+echo
